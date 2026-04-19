@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import sensible from '@fastify/sensible';
 import { chargesRoutes } from './modules/charges/charges.routes.js';
 import { webhooksRoutes } from './modules/webhooks/webhooks.routes.js';
+import { registry } from './shared/metrics/index.js';
 
 const app = Fastify({
   logger: {
@@ -19,6 +20,11 @@ app.register(webhooksRoutes);
 
 app.get('/health', async () => {
   return { status: 'ok', timestamp: new Date().toISOString() };
+});
+
+app.get('/metrics', async (_request, reply) => {
+  reply.header('Content-Type', registry.contentType);
+  return reply.send(await registry.metrics());
 });
 
 const PORT = Number(process.env.PORT) || 3000;

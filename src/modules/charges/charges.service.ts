@@ -1,6 +1,7 @@
 import { createCharge, findChargeById } from './charges.repository.js';
 import { redis } from '../../shared/cache/index.js';
 import { publishChargeToProcess } from '../../shared/queue/publisher.js';
+import { chargesCreatedTotal } from '../../shared/metrics/index.js';
 import type { Charge } from '../../shared/database/schema.js';
 
 export type CreateChargeInput = {
@@ -43,6 +44,7 @@ export async function handleCreateCharge(
   }
 
   await publishChargeToProcess(charge.id);
+  chargesCreatedTotal.inc();
 
   return { charge, fromCache: false };
 }

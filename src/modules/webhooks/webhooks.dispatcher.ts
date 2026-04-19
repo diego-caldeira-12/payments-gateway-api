@@ -1,5 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { listActiveWebhookEndpoints } from './webhooks.repository.js';
+import { webhookDispatchTotal, webhookDispatchDuration } from '../../shared/metrics/index.js';
 import type { Charge } from '../../shared/database/schema.js';
 
 const MAX_ATTEMPTS = 4;
@@ -19,21 +20,24 @@ async function deliverWithRetry(url: string, secret: string, body: string): Prom
   const signature = sign(secret, body);
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const end = webhookDispatchDuration.startTimer();
     try {
       const res = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Webhook-Signature': signature,
-        },
+        headers: { 'Content-Type': 'application/json', 'X-Webhook-Signature': signature },
         body,
         signal: AbortSignal.timeout(5_000),
       });
+      end();
 
-      if (res.ok) return;
+      if (res.ok) {
+        webhookDispatchTotal.inc({ outcome: 'success' });
+        return;
+      }
 
       console.warn(`[webhook] ${url} responded ${res.status} (attempt ${attempt})`);
     } catch (err) {
+      end();
       console.warn(`[webhook] ${url} unreachable (attempt ${attempt})`, err);
     }
 
@@ -42,6 +46,7 @@ async function deliverWithRetry(url: string, secret: string, body: string): Prom
     }
   }
 
+  webhookDispatchTotal.inc({ outcome: 'failure' });
   console.error(`[webhook] giving up on ${url} after ${MAX_ATTEMPTS} attempts`);
 }
 
