@@ -1,6 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { handleCreateCharge, type CreateChargeInput } from './charges.service.js';
-import { handleGetCharge } from './charges.service.js';
+import { handleCreateCharge, handleGetCharge, type CreateChargeInput } from './charges.service.js';
 
 const createChargeSchema = {
   body: {
@@ -13,14 +12,26 @@ const createChargeSchema = {
     },
     additionalProperties: false,
   },
+  headers: {
+    type: 'object',
+    properties: {
+      'idempotency-key': { type: 'string', maxLength: 255 },
+    },
+  },
 } as const;
 
 export async function chargesRoutes(app: FastifyInstance) {
-  app.post<{ Body: CreateChargeInput }>(
+  app.post<{ Body: CreateChargeInput; Headers: { 'idempotency-key'?: string } }>(
     '/charges',
     { schema: createChargeSchema },
     async (request, reply) => {
-      const charge = await handleCreateCharge(request.body);
+      const idempotencyKey = request.headers['idempotency-key'];
+      const { charge, fromCache } = await handleCreateCharge(request.body, idempotencyKey);
+
+      if (fromCache) {
+        return reply.status(201).header('Idempotent-Replayed', 'true').send(charge);
+      }
+
       return reply.status(201).send(charge);
     },
   );
