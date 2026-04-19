@@ -1,5 +1,6 @@
 import { createCharge, findChargeById } from './charges.repository.js';
 import { redis } from '../../shared/cache/index.js';
+import { publishChargeToProcess } from '../../shared/queue/publisher.js';
 import type { Charge } from '../../shared/database/schema.js';
 
 export type CreateChargeInput = {
@@ -40,6 +41,8 @@ export async function handleCreateCharge(
       IDEMPOTENCY_TTL_SECONDS,
     );
   }
+
+  await publishChargeToProcess(charge.id);
 
   return { charge, fromCache: false };
 }

@@ -66,6 +66,24 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  worker:
+    build:
+      context: .
+      target: development
+    command: npm run worker
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pguser}:${POSTGRES_PASSWORD:-pgpassword}@postgres:5432/${POSTGRES_DB:-payments_gateway}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-rabbit}:${RABBITMQ_PASSWORD:-rabbitpassword}@rabbitmq:5672
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   redis_data:
