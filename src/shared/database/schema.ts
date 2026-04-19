@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, integer, varchar, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { pgEnum, pgTable, integer, varchar, text, timestamp, uuid, boolean } from 'drizzle-orm/pg-core';
 
 export const chargeStatusEnum = pgEnum('charge_status', [
   'pending',
@@ -20,3 +20,13 @@ export const charges = pgTable('charges', {
 
 export type Charge = typeof charges.$inferSelect;
 export type NewCharge = typeof charges.$inferInsert;
+
+export const webhookEndpoints = pgTable('webhook_endpoints', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  url: text('url').notNull(),
+  secret: varchar('secret', { length: 64 }).notNull(),
+  active: boolean('active').notNull().default(true),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export type WebhookEndpoint = typeof webhookEndpoints.$inferSelect;

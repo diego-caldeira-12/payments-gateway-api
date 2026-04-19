@@ -1,9 +1,9 @@
 import type { ConsumeMessage } from 'amqplib';
 import { getChannel, QUEUE_CHARGES } from '../../shared/queue/index.js';
 import { updateChargeStatus } from './charges.repository.js';
+import { dispatchChargeStatusChanged } from '../webhooks/webhooks.dispatcher.js';
 
 const FAILURE_RATE = 0.2;
-const PROCESSING_DELAY_MS = 1500 + Math.random() * 1500;
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -13,14 +13,15 @@ async function processMessage(msg: ConsumeMessage): Promise<void> {
   const { chargeId } = JSON.parse(msg.content.toString()) as { chargeId: string };
 
   console.log(`[worker] processing charge ${chargeId}`);
-  await updateChargeStatus(chargeId, 'processing');
+  const processing = await updateChargeStatus(chargeId, 'processing');
+  if (processing) await dispatchChargeStatusChanged(processing);
 
-  await sleep(PROCESSING_DELAY_MS);
+  await sleep(1500 + Math.random() * 1500);
 
-  const failed = Math.random() < FAILURE_RATE;
-  const finalStatus = failed ? 'failed' : 'succeeded';
+  const finalStatus = Math.random() < FAILURE_RATE ? 'failed' : 'succeeded';
+  const final = await updateChargeStatus(chargeId, finalStatus);
+  if (final) await dispatchChargeStatusChanged(final);
 
-  await updateChargeStatus(chargeId, finalStatus);
   console.log(`[worker] charge ${chargeId} → ${finalStatus}`);
 }
 

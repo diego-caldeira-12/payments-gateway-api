@@ -2,6 +2,7 @@ import 'dotenv/config';
 import Fastify from 'fastify';
 import sensible from '@fastify/sensible';
 import { chargesRoutes } from './modules/charges/charges.routes.js';
+import { webhooksRoutes } from './modules/webhooks/webhooks.routes.js';
 
 const app = Fastify({
   logger: {
@@ -14,6 +15,7 @@ const app = Fastify({
 
 app.register(sensible);
 app.register(chargesRoutes);
+app.register(webhooksRoutes);
 
 app.get('/health', async () => {
   return { status: 'ok', timestamp: new Date().toISOString() };
